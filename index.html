@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+	.frame {
+		fill: none;
+		stroke: #000;
+	}
+
+	.axis text {
+		font: 10px sans-serif;
+	}
+
+	.axis line{
+		fill: none;
+		stroke: #777;
+		stroke-dasharray: 1, 4;
+	}
+
+	.line {
+		fill: none;
+		stroke: #bbbbbb;
+		stroke-width: 1.5px;
+	}
+
+	.fill {
+		fill: none;
+		stroke: #ffa000;
+		stroke-width: 13px;
+	}
+
+</style>
+<body>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="moment.js"></script>
+<script>
+
+
+	//var data = [
+	//    {
+	//        "start": 1453059399605,
+	//        "stop": 1453063100505
+	//    }
+	//];
+
+	var width = 960,
+		height = 500,
+		outset = 60,
+		radius = Math.min(width, height) / 2 - outset;
+
+	var r = d3.scale.linear()
+			.domain([0, 16])
+			.range([0, radius]);
+
+	var line = d3.svg.line.radial()
+			.radius(function(d) {
+				return r(d[1]);
+			})
+			.angle(function(d) {
+				return -d[0] + Math.PI / 2;
+			});
+
+	// initial canvas creation
+	var svg = d3.select("body").append("svg")
+			.attr("width", width)
+			.attr("height", height)
+			.append("g")
+			.attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+	// radial lines
+	var ga = svg.append("g")
+			.attr("class", "a axis")
+			.selectAll("g")
+			.data(d3.range(90, -270, -360/48))
+			.enter().append("g")
+			.attr("transform", function(d) {
+				return "rotate(" + -d + ")";
+			});
+
+	ga.append("line")
+			.attr("x2", radius);
+
+	// radial labels
+	ga.append("text")
+			.attr("x", radius)
+			.attr("dy", ".35em")
+			.style("text-anchor", function(d) {
+				return d < 270 && d > 90 ? "end" : null;
+			})
+			.attr("transform", function(d) {
+				return d < 270 && d > 90 ? "rotate(180 " + (radius + 6) + ",0)" : null;
+			})
+			.text(function(d) {
+				var hour = Math.abs(d - 90) / 15;
+				var min = (hour % 1) * 60;
+				hour = Math.floor(hour);
+				while(min.toString().length < 2){
+					min = '0' + min;
+				}
+
+				if(hour == 0) {
+					return '12:'+min + ' AM';
+				} else if (hour == 12) {
+					return '12:'+min + ' PM';
+				} else if (hour < 13) {
+					return hour + ':'+min + ' AM';
+				}
+				return (hour - 12) + ':'+min + ' PM';
+			});
+
+	// lines
+	var dayPis = 14.5;
+	var data = d3.range(-dayPis * Math.PI, -(dayPis + 16) * Math.PI, -.01).map(function(t) {
+		return [t, 3/19 * t];
+	});
+	svg.append("path")
+			.datum(data)
+			.attr("class", "line")
+			.attr("d", line);
+
+	var pis = 19;
+	var startOfWeekTimestamp = moment().startOf('week').unix();
+	var endOfWeekTimestamp = moment().startOf('week').add('7','days').unix();
+
+	function timeToRadians(time, weekStart) {
+		var angleConversionRatio = (2 * Math.PI) / (24*60*60);
+		return (time - weekStart) * angleConversionRatio + (dayPis * Math.PI);
+	}
+
+	function addTime(amount, type){
+		return timeToRadians(moment().startOf('week').add(amount,type).unix(), startOfWeekTimestamp);
+	}
+
+	// Takes in a start point and an end point -- from 5pm to 6pm would be addTime('5', 'hours'), addTime('6', 'hours')
+	function plotRadians(startRads,	endRads) {
+		var fill = d3.range(-startRads - Math.PI, -endRads - Math.PI, -.01).map(function(t) {
+			return [t, -3/19 * t];
+		});
+		svg.append("path")
+				.datum(fill)
+				.attr("class", "fill")
+				.attr("d", line);
+	}
+
+	function plotDate(startDateTime, endDateTime) {
+		// if it starts before the week, start at the beginning
+		if(moment(startDateTime) < moment().startOf('week')) {
+			startDateTime = moment().startOf('week').format();
+		}
+		// if it ends after the end of the week, stop at the end
+		if(moment(endDateTime) > moment().endOf('week')) {
+			endDateTime = moment().endOf('week').format();
+		}
+		plotRadians(
+			addTime((moment(startDateTime) - moment().startOf('week'))/1000/60/60, 'hours'),
+			addTime((moment(endDateTime) - moment().startOf('week'))/1000/60/60, 'hours')
+		);
+	}
+	plotDate(
+			'08/30/2016 17:00:00',
+			'08/30/2016 17:25:00'
+	);
+	plotDate(
+			'08/30/2016 17:00:00',
+			'08/30/2016 17:25:00'
+	);
+	plotDate(
+			'08/30/2016 20:00:00',
+			'08/30/2016 20:25:00'
+	);
+	plotDate(
+			'08/31/2016 00:00:00',
+			'08/31/2016 00:25:00'
+	);
+	plotDate(
+			'08/31/2016 05:00:00',
+			'08/31/2016 07:15:00'
+	);
+	plotDate(
+			'08/31/2016 12:15:00',
+			'08/31/2016 12:39:00'
+	);
+
+
+	// graphics radius
+	var gr = svg.append("g")
+			.attr("class", "r axis")
+			.selectAll("g")
+			.data(r.ticks(16).slice(1))
+			.enter().append("g")
+
+	// Labels
+	gr.append("text")
+			.attr("y", function(d) {
+				return -(radius-outset)/11 * d - 6;
+			})
+			.attr("transform", "rotate(3.55)")
+			.style("text-anchor", "middle")
+			.text(function(d) {
+				if (d > 6 && d < 15) {
+					d = d-7;
+					return ["Su", "Mo","Tu","We","Th","Fr","Sa"][d];
+				}
+			});
+
+</script>
