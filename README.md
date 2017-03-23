@@ -1,5 +1,5 @@
 # radialTime
-A D3.js implementation of a polar coordinate graph of time
+An experimental D3.js implementation of a polar coordinate graph of time
 
 # Usage:
 Only dates within the last week are shown
